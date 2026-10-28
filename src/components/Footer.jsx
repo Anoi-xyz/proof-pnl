@@ -13,6 +13,12 @@ export default function Footer() {
       <p style={{ marginTop: 4 }}>
         Only your spot PnL rate is revealed. Everything else stays private.
       </p>
+      <p className="footer-credit">
+        built by{' '}
+        <a href="https://x.com/anoi_exe" target="_blank" rel="noopener noreferrer">
+          anoi
+        </a>
+      </p>
     </footer>
   );
 }

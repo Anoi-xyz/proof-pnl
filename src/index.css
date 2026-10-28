@@ -794,33 +794,268 @@ body {
 .footer a { color: var(--acc); text-decoration: none; }
 .footer a:hover { text-decoration: underline; }
 
+/* ── Light – manual override (for dark-system users who toggled) */
+:root[data-theme="light"] {
+  --bg:     #fdfcfb;
+  --fg:     #1b0f0a;
+  --mut:    #8a6f62;
+  --glass:  rgba(255,255,255,.86);
+  --line:   rgba(60,30,15,.13);
+  --acc:    #ff4d00;
+  --acc0:   #ff4d00;
+  --pos:    #15803d;
+  --neg:    #dc2626;
+  --glow:   rgba(255,120,60,.20);
+  --shadow: 0 24px 60px -24px rgba(120,50,10,.35);
+  --dots:   rgba(120,60,30,.16);
+}
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 480px) {
-  /* On very small screens, hide middle nav links */
   .nav-links li.hide-sm { display: none; }
 }
 
+/* ── Theme toggle button ─────────────────────────────────────── */
+.nav-theme {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--fg);
+  border-radius: 99px;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color .15s, background .15s;
+  flex-shrink: 0;
+}
+.nav-theme:hover { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 8%, transparent); }
+
+/* ── Nav username ─────────────────────────────────────────────── */
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--mut);
+  min-width: 0;
+  flex-shrink: 1;
+}
+.nav-user-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+.nav-user-change {
+  background: none;
+  border: none;
+  color: var(--mut);
+  font: 500 12px var(--f);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.nav-user-change:hover { color: var(--acc); }
+@media (max-width: 480px) {
+  .nav-user-name { max-width: 56px; }
+  .nav-user-change { display: none; }
+}
+
+/* ── Username gate overlay ───────────────────────────────────── */
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 0 16px calc(40px + var(--oh) * .45);
+  transition: opacity .5s ease;
+}
+.gate.fading { opacity: 0; pointer-events: none; }
+
+/* Gate wordmark */
+.gate-wm {
+  position: relative;
+  width: min(78vw, 520px);
+  aspect-ratio: 1000 / 216;
+  margin-bottom: clamp(28px, 4vh, 44px);
+}
+.gate-wm img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Gate form */
+.gate-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+}
+.gate-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mut);
+  text-align: center;
+  margin-bottom: 2px;
+}
+.gate-input {
+  width: 100%;
+  font: 700 18px var(--f);
+  color: var(--fg);
+  background: var(--glass);
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  padding: 13px 18px;
+  outline: none;
+  text-align: center;
+  transition: border-color .15s;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  caret-color: var(--acc);
+}
+.gate-input:focus { border-color: var(--acc); }
+.gate-input::placeholder { color: var(--mut); font-weight: 500; opacity: .7; }
+.gate-error {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neg);
+  min-height: 18px;
+  text-align: center;
+}
+.gate-btn {
+  font: 800 16px var(--f);
+  color: #fff;
+  background: var(--acc0);
+  border: 0;
+  border-radius: 99px;
+  padding: 14px 36px;
+  cursor: pointer;
+  transition: opacity .15s, transform .15s;
+  margin-top: 4px;
+}
+.gate-btn:hover:not(:disabled) { opacity: .88; transform: scale(1.02); }
+.gate-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Gate owl — fixed peek at bottom */
+.gate-owl-wrap {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--ow);
+  height: var(--oh);
+  pointer-events: none;
+  z-index: 51;
+  overflow: visible;
+}
+.gate-owl-wrap .tilt {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform: translateY(45%);
+}
+.gate-owl-wrap .body  { width: 100%; height: 100%; display: block; }
+.gate-owl-wrap .iris  {
+  position: absolute;
+  width: 31.58%;
+  height: auto;
+  pointer-events: none;
+  will-change: transform;
+  transition: transform .08s linear;
+}
+.gate-owl-wrap .iris.l { left: 10.87%; top: 30.27%; }
+.gate-owl-wrap .iris.r { left: 56.71%; top: 30.4%; }
+.gate-owl-wrap .eg {
+  position: absolute;
+  width: 31.58%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+.gate-owl-wrap .eg.l { left: 10.87%; top: 30.27%; }
+.gate-owl-wrap .eg.r { left: 56.71%; top: 30.4%; }
+
+/* ── Badge: username + card footer ──────────────────────────── */
+.badge-username {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--fg);
+  margin: 2px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
+  opacity: .8;
+}
+
+.badge-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 9px;
+  margin-top: 9px;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--mut);
+  letter-spacing: .02em;
+  gap: 8px;
+}
+.badge-foot a { color: inherit; text-decoration: none; }
+.badge-foot a:hover { color: var(--acc); }
+.badge-foot-r { text-align: right; }
+
+/* ── Site footer credit ───────────────────────────────────────── */
+.footer-credit {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--mut);
+  opacity: .75;
+}
+.footer-credit a {
+  color: var(--mut);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.footer-credit a:hover { color: var(--acc); }
+
 /* ── Reduced motion ─────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  /* Show intro final state immediately */
   .play .ol  { clip-path: inset(0 0 0 0) !important; animation: none !important; }
   .play .fl  { clip-path: inset(0 0 0 0) !important; animation: none !important; }
   .play .dot { opacity: 0 !important; animation: none !important; }
   .play .tag { opacity: 1 !important; color: var(--acc) !important; animation: none !important; }
   .play .tag span::before { opacity: 0 !important; animation: none !important; }
   .play .owl { transform: none !important; animation: none !important; }
-  /* Show verify section immediately */
   .down .badge { opacity: 1 !important; transform: none !important; animation: none !important; }
   .down .cta   { opacity: 1 !important; animation: none !important; }
   .down .kv    { opacity: 1 !important; animation: none !important; }
   .down .owl   { transform: none !important; animation: none !important; }
   .down .pill svg { stroke-dashoffset: 0 !important; animation: none !important; }
-  /* Skip verify cinematic, keep result */
   .verify .cam  { animation: none !important; }
   .verify .beam { animation: none !important; opacity: 0 !important; }
   .verify .dim  { animation: none !important; opacity: 0 !important; }
   .verify .eg   { animation: none !important; box-shadow: none !important; }
   .verify .eg::after { animation: none !important; }
-  /* Section reveals */
   .reveal-item  { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .gate { transition: none !important; }
 }

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-const SAMPLE_PCT   = '+8.42';
-const SAMPLE_ADDR  = '0x5ed3…8c14';
-const SAMPLE_SIG   = '0x4c2f…5c11';
+const SAMPLE_PCT  = '+8.42';
+const SAMPLE_ADDR = '0x5ed3…8c14';
+const SAMPLE_SIG  = '0x4c2f…5c11';
 
 function shorten(s, n = 4) {
   if (!s || s.length < n * 2 + 2) return s ?? '—';
@@ -19,7 +19,16 @@ function formatTs(ms) {
   } catch { return '—'; }
 }
 
-export default function AttestationBadge({ badgeRef, pnlData, appState }) {
+/**
+ * AttestationBadge
+ *
+ * Props:
+ *   badgeRef  {ref}     — forwarded to the card div (for html2canvas capture)
+ *   pnlData   {object}  — { pct, rate, attestation } or null
+ *   appState  {string}  — idle | attesting | success | error
+ *   username  {string}  — current username (shown on card, plain text only)
+ */
+export default function AttestationBadge({ badgeRef, pnlData, appState, username }) {
   const [displayPct, setDisplayPct] = useState(null);
   const rafRef = useRef(null);
 
@@ -61,8 +70,8 @@ export default function AttestationBadge({ badgeRef, pnlData, appState }) {
   const timestamp = isVerified ? formatTs(att?.attRequest?.timestamp ?? att?.timestamp) : null;
 
   const handleShare = async () => {
-    const sign  = parseFloat(pnlData?.pct) >= 0 ? '+' : '';
-    const text  = `My Binance spot PnL is ${sign}${pnlData?.pct}%, verified by Primus zkTLS 🔐`;
+    const sign = parseFloat(pnlData?.pct) >= 0 ? '+' : '';
+    const text = `My Binance spot PnL is ${sign}${pnlData?.pct}%, verified by Primus zkTLS 🔐`;
     if (navigator.share) {
       try { await navigator.share({ text, url: window.location.href }); } catch {}
     } else {
@@ -73,9 +82,13 @@ export default function AttestationBadge({ badgeRef, pnlData, appState }) {
   const handleDownload = async () => {
     try {
       const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(badgeRef.current, { scale: 2, useCORS: true });
+      const canvas = await html2canvas(badgeRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null,  // respect card's own background
+      });
       const a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
+      a.href     = canvas.toDataURL('image/png');
       a.download = 'proofpnl-badge.png';
       a.click();
     } catch {
@@ -86,7 +99,7 @@ export default function AttestationBadge({ badgeRef, pnlData, appState }) {
   return (
     <>
       <div className="badge" id="badge-card" ref={badgeRef}>
-        {/* Header row */}
+        {/* ── Header row ──────────────────────────────────────── */}
         <div className="bt">
           <b>
             <img src="/assets/primus-icon.png" width="26" height="26" alt="" aria-hidden="true" />
@@ -100,15 +113,23 @@ export default function AttestationBadge({ badgeRef, pnlData, appState }) {
           </span>
         </div>
 
-        {/* PnL percentage */}
+        {/* ── PnL number ──────────────────────────────────────── */}
         <div className={`pct${isNeg && isVerified ? ' neg' : ''}`} aria-live="polite">
           {pctDisplay}
         </div>
+
+        {/* ── Label + username ────────────────────────────────── */}
         <div className="lbl">
           Binance Spot PnL Rate{!isVerified && ' (sample)'}
         </div>
+        {username && (
+          // Plain text only — never use innerHTML for user-supplied values
+          <div className="badge-username" title={`@${username}`}>
+            @{username}
+          </div>
+        )}
 
-        {/* Key-value rows — inline animationDelay ensures correct stagger */}
+        {/* ── KV rows (attestor, signature, date) ─────────────── */}
         <div className="kv" style={{ animationDelay: '1.9s' }}>
           Attestor <span>{attestor}</span>
         </div>
@@ -116,12 +137,18 @@ export default function AttestationBadge({ badgeRef, pnlData, appState }) {
           Signature <span>{sig}</span>
         </div>
         <div className="kv" style={{ animationDelay: '2.5s' }}>
-          {isVerified ? 'Timestamp' : 'Fields revealed'}{' '}
+          {isVerified ? 'Date' : 'Fields revealed'}{' '}
           <span>{isVerified ? timestamp : '1'}</span>
+        </div>
+
+        {/* ── Card footer ─────────────────────────────────────── */}
+        <div className="badge-foot">
+          <span>built by anoi</span>
+          <span className="badge-foot-r">powered by Primus zkTLS</span>
         </div>
       </div>
 
-      {/* Action buttons — only visible after success (.ok class via CSS) */}
+      {/* Action buttons — visible only after success (.ok class via CSS) */}
       <div className="badge-actions">
         <button className="btn-ghost" type="button" onClick={handleShare}>
           Share

@@ -25,6 +25,7 @@ export default function VerifyBlock({
   wordmarkRef,
   badgeRef,
   ctaRef,
+  username,
   onVerify,
   onReset,
   onSectionVisible,
@@ -111,6 +112,7 @@ export default function VerifyBlock({
         badgeRef={badgeRef}
         pnlData={pnlData}
         appState={appState}
+        username={username}
       />
 
       {/* ── Verify button ──────────────────────────────────────── */}

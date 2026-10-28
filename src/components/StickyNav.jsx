@@ -1,6 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 
-export default function StickyNav() {
+/**
+ * StickyNav
+ *
+ * Props:
+ *   username        {string}   — current username ('' if none yet)
+ *   onChangeUsername {fn}      — open the gate again so user can pick a new name
+ *   theme           {string}   — 'light' | 'dark'
+ *   onToggleTheme   {fn}       — flip the theme
+ */
+export default function StickyNav({ username, onChangeUsername, theme, onToggleTheme }) {
   const navRef = useRef(null);
 
   useEffect(() => {
@@ -18,6 +27,21 @@ export default function StickyNav() {
         Proof<span style={{ color: 'var(--acc)' }}>PnL</span>
       </a>
 
+      {/* Username display — quiet muted text + "change" link */}
+      {username && (
+        <div className="nav-user" aria-label={`Signed in as ${username}`}>
+          <span className="nav-user-name" title={`@${username}`}>@{username}</span>
+          <button
+            className="nav-user-change"
+            type="button"
+            onClick={onChangeUsername}
+            aria-label="Change username"
+          >
+            change
+          </button>
+        </div>
+      )}
+
       <ul className="nav-links" role="list">
         <li className="hide-sm">
           <a href="#how-it-works">How it works</a>
@@ -25,6 +49,20 @@ export default function StickyNav() {
         <li className="hide-sm">
           <a href="#privacy">Privacy</a>
         </li>
+
+        {/* Dark / Light theme toggle */}
+        <li>
+          <button
+            className="nav-theme"
+            type="button"
+            onClick={onToggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+        </li>
+
         <li>
           <a href="#verify" className="nav-cta">Verify PnL</a>
         </li>

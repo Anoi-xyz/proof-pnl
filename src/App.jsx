@@ -6,47 +6,84 @@ import HowItWorksSection  from './components/HowItWorksSection.jsx';
 import PrivacySection     from './components/PrivacySection.jsx';
 import Footer             from './components/Footer.jsx';
 import StatusPill         from './components/StatusPill.jsx';
+import UsernameGate       from './components/UsernameGate.jsx';
 import usePrimusAttestation from './hooks/usePrimusAttestation.js';
+import { useTheme }       from './hooks/useTheme.js';
+
+const USERNAME_KEY = 'ppnl_username';
 
 /**
  * App
  *
  * State machine:  idle → attesting → success | error → idle
  *
- * Animation class management:
- *   .play    added once after 80 ms (triggers intro animations)
- *   .down    toggled by IntersectionObserver via handleSectionVisible
- *            (forced reflow ensures animations replay on re-entry)
- *   .verify  set when appState === 'attesting'
- *   .ok      added (alongside .verify) when appState === 'success'
- *   .err     added on error, removed after shake animation
+ * Gate phases:
+ *   'show'   — UsernameGate overlay is visible (first visit or "change" clicked)
+ *   'fading' — overlay transitioning out (CSS opacity → 0 over 500 ms)
+ *   'done'   — overlay removed; main site is fully visible
  *
- * All classes are applied directly to the .pg DOM node via pgRef
- * to avoid React batching / stale-closure issues with animation replay.
+ * Animation class management on .pg:
+ *   .play    added once after the gate closes (or immediately for returning users)
+ *   .down    toggled by IntersectionObserver via handleSectionVisible
+ *   .verify  set when appState === 'attesting'
+ *   .ok      added when appState === 'success'
+ *   .err     added on error, removed after shake animation
  */
 export default function App() {
-  // ── State ───────────────────────────────────────────────────
-  const [appState,  setAppState]  = useState('idle');   // idle|attesting|success|error
+  // ── Theme ────────────────────────────────────────────────────
+  const { theme, toggleTheme } = useTheme();
+
+  // ── Username + gate ──────────────────────────────────────────
+  const [username,   setUsername]   = useState(() => localStorage.getItem(USERNAME_KEY) ?? '');
+  const [gatePhase,  setGatePhase]  = useState(() => localStorage.getItem(USERNAME_KEY) ? 'done' : 'show');
+
+  // ── Attestation state ────────────────────────────────────────
+  const [appState,   setAppState]   = useState('idle');
   const [attestStep, setAttestStep] = useState(0);
-  const [pnlData,   setPnlData]   = useState(null);
-  const [error,     setError]     = useState(null);
+  const [pnlData,    setPnlData]    = useState(null);
+  const [error,      setError]      = useState(null);
 
-  // ── Refs shared with child components ───────────────────────
-  const pgRef       = useRef(null);   // .pg wrapper — receives all animation classes
-  const appStateRef = useRef('idle'); // mutable, read by useGaze closure
-  const isDownRef   = useRef(false);  // mutable, read by useGaze closure
+  // ── Refs shared with child components ────────────────────────
+  const pgRef        = useRef(null);
+  const appStateRef  = useRef('idle');
+  const isDownRef    = useRef(false);
+  const introPlayed  = useRef(false);   // guard: never play intro twice
 
-  // Focal element refs (idle gaze targets for useGaze)
+  // Focal element refs (idle gaze targets)
   const wordmarkRef = useRef(null);
   const badgeRef    = useRef(null);
   const ctaRef      = useRef(null);
 
   const { startAttestation } = usePrimusAttestation();
 
-  // ── Intro: add 'play' once on mount ─────────────────────────
+  // ── Trigger intro (.play) — called once, after gate is done ──
+  const triggerIntro = useCallback(() => {
+    if (introPlayed.current) return;
+    introPlayed.current = true;
+    setTimeout(() => pgRef.current?.classList.add('play'), 80);
+  }, []);
+
+  // For returning users (gate already 'done' on mount), play intro immediately
   useEffect(() => {
-    const id = setTimeout(() => pgRef.current?.classList.add('play'), 80);
-    return () => clearTimeout(id);
+    if (gatePhase === 'done') triggerIntro();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Gate submit ──────────────────────────────────────────────
+  const handleGateSubmit = useCallback((name) => {
+    // Save to localStorage — name is plain text, set via textContent in UI
+    localStorage.setItem(USERNAME_KEY, name);
+    setUsername(name);
+    setGatePhase('fading');
+    // After the 500 ms CSS fade, remove the overlay and start the intro
+    setTimeout(() => {
+      setGatePhase('done');
+      triggerIntro();
+    }, 520);
+  }, [triggerIntro]);
+
+  // ── Change username — re-show the gate without replaying intro ──
+  const handleChangeUsername = useCallback(() => {
+    setGatePhase('show');
   }, []);
 
   // ── Sync appState → .pg DOM classes ─────────────────────────
@@ -59,31 +96,24 @@ export default function App() {
       el.classList.remove('ok', 'err');
       el.classList.add('verify');
     } else if (appState === 'success') {
-      // Keep 'verify' (its CSS animations are timing-based), add 'ok'
       el.classList.remove('err');
       el.classList.add('ok');
     } else if (appState === 'error') {
       el.classList.remove('ok');
       el.classList.add('err');
-      // Remove err + verify after the shake/dimout animations finish
-      const id = setTimeout(() => {
-        el.classList.remove('err', 'verify');
-      }, 1200);
+      const id = setTimeout(() => el.classList.remove('err', 'verify'), 1200);
       return () => clearTimeout(id);
     } else {
-      // idle / reset
       el.classList.remove('verify', 'ok', 'err');
     }
   }, [appState]);
 
-  // ── Callback from IntersectionObserver in VerifyBlock ───────
+  // ── Callback from IntersectionObserver in VerifyBlock ────────
   const handleSectionVisible = useCallback((visible) => {
     isDownRef.current = visible;
     const el = pgRef.current;
     if (!el) return;
-
     if (visible) {
-      // Force reflow so CSS animations replay on re-entry
       el.classList.remove('down');
       void el.offsetWidth;
       el.classList.add('down');
@@ -95,7 +125,6 @@ export default function App() {
   // ── Verify flow ──────────────────────────────────────────────
   const handleVerify = useCallback(async () => {
     if (appState === 'attesting') return;
-
     setAppState('attesting');
     setError(null);
     setPnlData(null);
@@ -103,12 +132,9 @@ export default function App() {
 
     try {
       const result = await startAttestation((step) => setAttestStep(step));
-
-      // Parse the data field (it's a JSON string per Primus docs)
-      const parsed  = JSON.parse(result.data);
-      const rate    = parseFloat(parsed.spotPnlRate); // e.g. -0.04460000
-      const pct     = (rate * 100).toFixed(2);        // "-4.46"
-
+      const parsed = JSON.parse(result.data);
+      const rate   = parseFloat(parsed.spotPnlRate);
+      const pct    = (rate * 100).toFixed(2);
       setPnlData({ pct, rate, attestation: result });
       setAppState('success');
     } catch (err) {
@@ -118,12 +144,11 @@ export default function App() {
     }
   }, [appState, startAttestation]);
 
-  // ── Reset back to idle ───────────────────────────────────────
+  // ── Reset to idle ────────────────────────────────────────────
   const handleReset = useCallback(() => {
     const el = pgRef.current;
     if (el) {
       el.classList.remove('verify', 'ok', 'err');
-      // Re-trigger badge / cta animations if section still visible
       if (isDownRef.current) {
         el.classList.remove('down');
         void el.offsetWidth;
@@ -140,16 +165,27 @@ export default function App() {
   // ── Render ───────────────────────────────────────────────────
   return (
     <>
-      {/* Fixed dot-grid / glow background (below everything) */}
+      {/* Username gate — rendered until gatePhase is 'done' */}
+      {gatePhase !== 'done' && (
+        <UsernameGate
+          fading={gatePhase === 'fading'}
+          onSubmit={handleGateSubmit}
+        />
+      )}
+
+      {/* Fixed dot-grid / glow background */}
       <div className="bgl" aria-hidden="true" />
 
-      <StickyNav />
+      <StickyNav
+        username={username}
+        onChangeUsername={handleChangeUsername}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
 
       {/*
-        .pg — the hero + verify film strip.
-        All animation classes (play, down, verify, ok, err) live here.
-        HowItWorks, Privacy, Footer sit OUTSIDE .pg so those selectors
-        don't bleed into the later sections.
+        .pg — hero + verify film strip.
+        Animation classes (play, down, verify, ok, err) all live here.
       */}
       <div className="pg" ref={pgRef}>
         <IntroSection wordmarkRef={wordmarkRef} />
@@ -164,6 +200,7 @@ export default function App() {
           wordmarkRef={wordmarkRef}
           badgeRef={badgeRef}
           ctaRef={ctaRef}
+          username={username}
           onVerify={handleVerify}
           onReset={handleReset}
           onSectionVisible={handleSectionVisible}
@@ -174,12 +211,8 @@ export default function App() {
       <PrivacySection />
       <Footer />
 
-      {/* Fixed status pill — visible during attesting / success / error */}
-      <StatusPill
-        appState={appState}
-        attestStep={attestStep}
-        error={error}
-      />
+      {/* Fixed status pill */}
+      <StatusPill appState={appState} attestStep={attestStep} error={error} />
     </>
   );
 }

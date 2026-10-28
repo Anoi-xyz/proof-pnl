@@ -9,6 +9,22 @@
     <meta property="og:description" content="Prove your trading performance without revealing your credentials. Powered by Primus Network zkTLS." />
     <meta name="twitter:card" content="summary_large_image" />
 
+    <!--
+      Inline theme script — runs synchronously before any paint.
+      Reads the saved theme from localStorage and applies data-theme to <html>
+      so CSS variables are correct from the very first frame (no flash).
+    -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('ppnl_theme');
+          if (t === 'dark' || t === 'light') {
+            document.documentElement.setAttribute('data-theme', t);
+          }
+        } catch (e) { /* storage unavailable (private browsing etc.) */ }
+      })();
+    </script>
+
     <!-- Fonts: Manrope (body/display) + IBM Plex Mono (attestation metadata) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -29,3 +45,4 @@
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
+
