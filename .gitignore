@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+*.local
+.DS_Store
+
+# Vercel local project settings (contains project + org IDs)
+.vercel/
+
+# Dev utilities not needed in the deployed repo
+screenshot.mjs
+reference/
